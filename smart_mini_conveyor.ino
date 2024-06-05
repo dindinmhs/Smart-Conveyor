@@ -22,9 +22,14 @@ float duration,distance;
 // variabel counting
 int itemA = 0;
 int itemB = 0;
+int itemC = 0;
+int total = 0;
 
+// variabel untuk mendeteksi barang
 bool itemDetectedA = false;
 bool itemDetectedB = false;
+bool itemDetectedC = false;
+
 
 // Library
 #include <WiFi.h>
@@ -34,6 +39,9 @@ bool itemDetectedB = false;
 // object servo
 Servo servoA;
 Servo servoB;
+
+// Blynk Timer
+BlynkTimer timer;
 
 void setup() {
   // pin mode
@@ -60,16 +68,16 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  // Print local IP address and start web server
   Serial.println("");
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  
+
+  // Setup a function to be called every 100ms
+  timer.setInterval(100L, sortir);
 }
 
-void loop() {
-  Blynk.run();
+void sortir() {
   digitalWrite(trigPin, LOW);  
 	delayMicroseconds(2);  
 	digitalWrite(trigPin, HIGH);  
@@ -79,12 +87,15 @@ void loop() {
   distance = (duration*.0343)/2;
   Serial.print("Distance: ");  
 	Serial.println(distance);
-  // Deteksi untuk variabel A (7-10 cm)
-  if (distance < 4) {
+
+  // Deteksi untuk variabel A (6,27-10,27 cm)
+  if (distance <= 4) {
     if (!itemDetectedA) {
       itemA++;
+      total++;
       itemDetectedA = true;
       Blynk.virtualWrite(V2, itemA);
+      Blynk.virtualWrite(V6, total);
       servoA.write(90);
       delay(1000);
       for (int i = 90; i > 0; i--) {
@@ -96,12 +107,14 @@ void loop() {
     itemDetectedA = false;
   }
 
-  // Deteksi untuk variabel B (2-6 cm)
+  // Deteksi untuk variabel B (1,37-6,26 cm)
   if (distance > 4 && distance < 9) {
     if (!itemDetectedB) {
       itemB++;
+      total++;
       itemDetectedB = true;
       Blynk.virtualWrite(V3, itemB);
+      Blynk.virtualWrite(V6, total);
       servoB.write(0);
       delay(1000);
       for (int i = 0; i < 90; i++) {
@@ -112,7 +125,25 @@ void loop() {
   } else {
     itemDetectedB = false;
   }
-  delay(100);
+
+  //  Deteksi untuk variabel C (0,37-1,36 cm)
+  if (distance >= 9 && distance <= 9.90) {
+    if (!itemDetectedB) {
+      itemC++;
+      total++;
+      itemDetectedC = true;
+      Blynk.virtualWrite(V5, itemC);
+      Blynk.virtualWrite(V6, total);
+      delay(1180);
+    }
+  } else {
+    itemDetectedC = false;
+  }
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
 }
 
 BLYNK_WRITE(V0)
@@ -143,8 +174,12 @@ BLYNK_WRITE(V4)
   if (value == 1) {
     itemA = 0;
     itemB = 0;
+    itemC = 0;
+    total = 0;
     Blynk.virtualWrite(V2, itemA);
     Blynk.virtualWrite(V3, itemB);
+    Blynk.virtualWrite(V5, itemC);
+    Blynk.virtualWrite(V6, total);
   }
   Serial.print("V1 Slider value is: ");
   Serial.println(value);
